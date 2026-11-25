@@ -8,6 +8,9 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      ANDROID_HOME: /usr/local/lib/android/sdk
+      ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -18,20 +21,12 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
-        with:
-          api-level: 34
-          build-tools: '34.0.0'
-
-      - name: Accept Android SDK Licenses
+      - name: Install Android SDK Packages & Accept Licenses
         run: |
-          yes | sdkmanager --licenses > /dev/null || true
-          sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0"
-
-      - name: Setup Gradle Wrapper
-        uses: gradle/wrapper-validation-action@v3
-        continue-on-error: true
+          SDKMANAGER=$(find "$ANDROID_HOME/cmdline-tools" -name "sdkmanager" -type f 2>/dev/null | sort -V | tail -n 1)
+          echo "Using sdkmanager: $SDKMANAGER"
+          yes | "$SDKMANAGER" --sdk_root="$ANDROID_HOME" --licenses > /dev/null || true
+          yes | "$SDKMANAGER" --sdk_root="$ANDROID_HOME" "platform-tools" "platforms;android-34" "build-tools;34.0.0"
 
       - name: Install Gradle & Generate Wrapper
         run: |
@@ -42,7 +37,7 @@ jobs:
           chmod +x ./gradlew
 
       - name: Build Debug APK
-        run: ./gradlew assembleDebug
+        run: ./gradlew assembleDebug --stacktrace
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
